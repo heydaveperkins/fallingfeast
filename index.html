@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Falling Feast">
+  <meta name="theme-color" content="#1b1210">
+  <meta name="description" content="Falling Feast: an 8-bit Thanksgiving arcade game. Catch the feast, dodge the hazards.">
+  <title>Falling Feast</title>
+  <link rel="preload" href="fonts/PressStart2P-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="styles.css?v=202611061123">
+</head>
+<body>
+  <main class="stage" id="stage">
+    <div class="frame" id="frame">
+      <canvas id="game" aria-label="Falling Feast game"></canvas>
+      <p class="status" id="status">LOADING</p>
+      <button class="mute" id="mute" type="button" aria-label="Toggle sound" aria-pressed="false">
+        <svg viewBox="0 0 12 10" shape-rendering="crispEdges" aria-hidden="true">
+          <path d="M1 3h2V2h1V1h1v8H4V8H3V7H1z" fill="currentColor"/>
+          <g class="waves"><path d="M7 3h1v4H7zM9 2h1v6H9z" fill="currentColor"/></g>
+          <g class="cross"><path d="M7 3h1v1H7zm1 1h1v1H8zm1 1h1v1H9zm1 1h1v1h-1zM10 3h1v1h-1zM9 4h1v1H9zM8 5h1v1H8zM7 6h1v1H7z" fill="currentColor"/></g>
+        </svg>
+      </button>
+    </div>
+  </main>
+
+  <!-- Landscape fallback: the game pauses while this shows -->
+  <section class="rotate" id="rotate" aria-live="polite">
+    <div class="rotate-phone" aria-hidden="true"><i></i></div>
+    <p>ROTATE YOUR<br>PHONE</p>
+  </section>
+
+  <script src="vendor/rive-webgl2-2.44.2/rive.js"></script>
+  <script>window.FALLING_BUILD = "202611061123";</script>
+  <script src="game.js?v=202611061123"></script>
+</body>
+</html>

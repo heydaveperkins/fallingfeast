@@ -1,0 +1,2 @@
+@rive-app/webgl2 2.44.2 (MIT licence), vendored from npm so the game needs no CDN.
+https://www.npmjs.com/package/@rive-app/webgl2/v/2.44.2
