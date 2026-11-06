@@ -64,18 +64,126 @@ canvas {
   touch-action: none;
 }
 
-.status {
+/* Loading screen: pixel food falling toward a swaying cornucopia, with a chunky progress bar */
+.frame { container-type: inline-size; }
+
+.loader {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
-  margin: 0;
-  font-size: 10px;
-  color: var(--gold);
   background: var(--bg);
-  transition: opacity 0.2s steps(3);
+  transition: opacity 0.35s steps(4);
 }
-.frame.ready .status { opacity: 0; pointer-events: none; }
+.frame.ready .loader { opacity: 0; pointer-events: none; }
+
+.l-title {
+  position: absolute;
+  left: 0; right: 0; top: 12%;
+  margin: 0;
+  text-align: center;
+  font-weight: normal;
+  font-size: 13.3cqw;
+  line-height: 1.2;
+  text-shadow: 0.55cqw 0.55cqw 0 #b3321f;
+}
+.l-title span { display: block; }
+.l-title span:first-child { color: var(--gold); }
+.l-title span:last-child { color: var(--orange); }
+
+.l-sky {
+  position: absolute;
+  left: 0; right: 0; top: 34%; height: 36%;
+  overflow: hidden;
+}
+.fall {
+  position: absolute;
+  top: -20%;
+  width: 13.3cqw;
+  animation: drop 3.6s steps(18) infinite;
+}
+.fall.f1 { left: 3%;  animation-duration: 3.4s; animation-delay: -0.4s; }
+.fall.f2 { left: 19%; animation-duration: 4.2s; animation-delay: -2.1s; }
+.fall.f3 { left: 35%; animation-duration: 3.8s; animation-delay: -1.2s; }
+.fall.f4 { left: 51%; animation-duration: 4.4s; animation-delay: -3.0s; }
+.fall.f5 { left: 67%; animation-duration: 3.6s; animation-delay: -0.9s; }
+.fall.f6 { left: 83%; animation-duration: 4.0s; animation-delay: -2.6s; }
+@keyframes drop { from { top: -22%; } to { top: 100%; } }
+
+.l-basket {
+  position: absolute;
+  bottom: 0;
+  width: 26.7cqw;
+  left: 18%;
+  animation: sway 6s steps(14) infinite;
+}
+@keyframes sway { 0%, 100% { left: 14%; } 50% { left: 58%; } }
+
+.l-bar {
+  position: absolute;
+  left: 15%; right: 15%; top: 75%;
+  height: 5.2cqw;
+  padding: 0.7cqw;
+  border: 0.6cqw solid var(--cream);
+  background: #0e0806;
+}
+.l-fill {
+  display: block;
+  height: 100%;
+  width: calc(var(--p) * 1%);
+  background: repeating-linear-gradient(90deg, var(--gold) 0 2.2cqw, transparent 2.2cqw 2.8cqw);
+}
+.l-text {
+  position: absolute;
+  left: 0; right: 0; top: 83%;
+  margin: 0;
+  text-align: center;
+  font-size: 5cqw;
+  color: var(--gold);
+}
+.l-tip {
+  position: absolute;
+  left: 0; right: 0; top: 90%;
+  margin: 0;
+  text-align: center;
+  font-size: 3.2cqw;
+  color: var(--cream);
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fall, .l-basket { animation: none; }
+  .fall { top: 40%; }
+  .l-basket { left: 36%; }
+}
+
+/* the big music button on the opening screen (the small speaker is hidden there) */
+.music-btn {
+  position: absolute;
+  left: 50%;
+  bottom: 2.4%;
+  transform: translateX(-50%);
+  display: none;
+  align-items: center;
+  gap: 2cqw;
+  padding: 1.6cqw 3.2cqw;
+  font: inherit;
+  font-size: 4.4cqw;
+  color: var(--cream);
+  background: #3b2314;
+  border: 0.6cqw solid var(--gold);
+  box-shadow: 0.6cqw 0.6cqw 0 #1a0f0a;
+  white-space: nowrap;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.music-btn svg { width: 6.6cqw; height: auto; display: block; }
+.music-btn .cross { display: none; }
+.music-btn.off .waves { display: none; }
+.music-btn.off .cross { display: inline; }
+.music-btn.off { color: #e0786b; border-color: #c4574a; }
+.music-btn:active { transform: translateX(-50%) translate(0.5cqw, 0.5cqw); box-shadow: none; }
+.music-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.frame.ready[data-screen="title"] .music-btn { display: flex; }
+.frame[data-screen="title"] .mute, .frame:not(.ready) .mute { display: none; }
 
 /* pixel speaker button, bottom-right over the counter */
 .mute {

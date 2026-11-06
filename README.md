@@ -109,7 +109,7 @@ Set by `game.js` (name, type, purpose):
 | `gravyBar`, `featherBar` | number | HUD timer bar width, 0..24 |
 | `gravyL`, `gravyM`, `gravyR`, `gravyBodyW` | number | gravy boat geometry (from `GRAVY_BOAT_WIDTH`) |
 | `s_<kind>_<n>` | view model `Item` | one pooled item slot: `x`, `y`, `fx` |
-| `t0`..`t9`, `h0`..`h2` | view model `Item` | dinner-table and title-hero items |
+| `t0`..`t9` | view model `Item` | dinner-table items |
 
 `Item` view model: `x`, `y` (art px) and `fx` enum: `hidden`, `fall`, `caught`,
 `caught2` (double score pop), `splat`, `hit`, `converted`.
@@ -118,6 +118,17 @@ State machines: `Game` on the main artboard has layers Screen, Basket Form
 (normal, gravy, gravy warning), Basket Action (idle, moving, catching, hit),
 Events, Shield and Rainbow Feather. Every `Item_<kind>` artboard has an `Item`
 machine (hidden, fall, caught, caught2, splat, hit, converted).
+
+## Loading, the opening screen and thumb room
+
+- **Loader:** the page shows a pixel loading screen (falling food, a swaying cornucopia, a 24-segment bar
+  with real percentages) while it downloads the Rive runtime, `game.riv` and both music loops. The game is
+  shown only when everything is ready, so the music never starts late. If a music file is missing the game
+  still starts, with sound effects only.
+- **Opening screen:** a HOW TO PLAY panel (drag to move, what to catch, what to dodge, the four pickups) and a
+  **MUSIC: ON/OFF** button under the best score.
+- **Thumb room:** the HUD is thin and the counter at the bottom is tall, leaving a wide strip below the basket
+  for a thumb. `FLOOR_Y`, `BASKET_TOP` and `SPAWN_Y` at the top of `game.js` set the geometry.
 
 ## Calm motion (dizziness)
 

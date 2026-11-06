@@ -80,9 +80,9 @@
 
   // Layout constants (art pixels): these match the art in scene.rml
   const ART_W = 180, ART_H = 390;
-  const SPAWN_Y = 22;                // items start hidden under the HUD band and slide out
-  const BASKET_TOP = 344;            // top of the basket mouth
-  const FLOOR_Y = 366;
+  const SPAWN_Y = 16;                // items start hidden under the HUD band and slide out
+  const BASKET_TOP = 326;            // top of the basket mouth
+  const FLOOR_Y = 348;               // the counter starts here: everything below is thumb room
   const ITEM_HALF = 9;               // item half-width for collision (items are drawn 1.5x: see ITEM_SCALE in tools/gen.py)
   const CAP_W = 12;                  // gravy boat cap width (art)
 
@@ -102,6 +102,7 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const pad6 = (n) => String(Math.min(999999, n)).padStart(6, "0");
   const debug = /[?&]debug\b/.test(location.search);
+  const STAMP = window.FALLING_BUILD ? "?v=" + window.FALLING_BUILD : "";   // so replaced files are not served from cache
 
   function shuffle(a) {
     for (let i = a.length - 1; i > 0; i--) {
@@ -151,9 +152,9 @@
   const fire = (p) => { const h = handle("trigger", p); if (h) h.trigger(); };
 
   // Rive state is written once per simulation step, only when it changed.
-  function startRive() {
+  function startRive(rivBytes) {
     r = new riveLib.Rive({
-      src: "game.riv" + (window.FALLING_BUILD ? "?v=" + window.FALLING_BUILD : ""),
+      buffer: rivBytes,
       canvas,
       stateMachine: "Game",
       autoplay: true,
@@ -165,11 +166,75 @@
         riveReady = true;
         fitFrame();
         initGame();
+        paintLoad(true);
+        clearInterval(tipTimer);
         frame.classList.add("ready");
         requestAnimationFrame(tick);
       },
-      onLoadError: (e) => { $("status").textContent = "Couldn't load. Please reload."; console.error(e); },
+      onLoadError: (e) => loadFailed(e),
     });
+  }
+
+  /* ======================================================================
+   * Loading: the Rive runtime, the art and both music loops are all fetched
+   * (with a progress bar) before the game is shown, so it is ready to play.
+   * ==================================================================== */
+  const ASSETS = [
+    { key: "wasm", url: "vendor/rive-webgl2-2.44.2/rive.wasm", weight: 2178508 },
+    { key: "riv", url: "game.riv" + STAMP, weight: 379000 },
+    { key: "normal", url: "audio/music-normal.mp3" + STAMP, weight: 3400238, optional: true },
+    { key: "slow", url: "audio/music-slow.mp3" + STAMP, weight: 3800911, optional: true },
+  ];
+  const TIPS = ["BASTING THE TURKEY...", "WARMING THE GRAVY...", "SETTING THE TABLE...", "SHINING THE ACORNS...", "TEACHING THE SPROUTS TO SCOWL...", "FLUFFING THE ROLLS..."];
+  let shownPct = 0, tipTimer = 0;
+  function paintLoad(done) {
+    const total = ASSETS.reduce((s, a) => s + a.weight, 0);
+    const got = ASSETS.reduce((s, a) => s + a.weight * (a.frac || 0), 0);
+    shownPct = Math.max(shownPct, done ? 100 : Math.min(99, Math.floor((got / total) * 100)));
+    const seg = Math.round((shownPct / 100) * 24);   // chunky 24-segment bar
+    $("loader").style.setProperty("--p", String((seg / 24) * 100));
+    $("loadText").textContent = shownPct >= 100 ? "READY!" : "LOADING " + shownPct + "%";
+  }
+  async function fetchAsset(a) {
+    const res = await fetch(a.url);
+    if (!res.ok) throw new Error(a.url + " " + res.status);
+    const total = +res.headers.get("content-length") || a.weight;
+    if (!res.body || !res.body.getReader) { const b = await res.blob(); a.frac = 1; paintLoad(); return b; }
+    const reader = res.body.getReader(), chunks = [];
+    let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value); got += value.length;
+      a.frac = Math.min(0.99, got / total);
+      paintLoad();
+    }
+    a.frac = 1; paintLoad();
+    return new Blob(chunks);
+  }
+  function loadFailed(e) {
+    console.error(e);
+    clearInterval(tipTimer);
+    $("loadText").textContent = "COULDN'T LOAD";
+    $("loadTip").textContent = "PLEASE RELOAD THE PAGE";
+  }
+  async function boot() {
+    let tip = 0;
+    tipTimer = setInterval(() => { tip = (tip + 1) % TIPS.length; $("loadTip").textContent = TIPS[tip]; }, 1600);
+    $("loadTip").textContent = TIPS[0];
+    paintLoad();
+    try {
+      const fontReady = document.fonts && document.fonts.load ? document.fonts.load('16px "Press Start 2P"').catch(() => {}) : Promise.resolve();
+      const [wasm, riv, normal, slow] = await Promise.all(ASSETS.map((a) =>
+        fetchAsset(a).catch((e) => { if (!a.optional) throw e; console.warn("Falling Feast: music not loaded", a.url); a.frac = 1; return null; })));
+      await fontReady;
+      riveLib.RuntimeLoader.setWasmUrl(URL.createObjectURL(wasm.slice(0, wasm.size, "application/wasm")));
+      audio.urls = {
+        normal: normal ? URL.createObjectURL(new Blob([normal], { type: "audio/mpeg" })) : null,
+        slow: slow ? URL.createObjectURL(new Blob([slow], { type: "audio/mpeg" })) : null,
+      };
+      startRive(await riv.arrayBuffer());
+    } catch (e) { loadFailed(e); }
   }
 
   /* ======================================================================
@@ -200,9 +265,7 @@
   /* ======================================================================
    * Audio: SFX synthesised with Web Audio, music from audio/*.mp3
    * ==================================================================== */
-  const audio = { ctx: null, master: null, music: {}, gains: {}, muted: store.get("muted", "0") === "1", started: false, slow: false };
-  const STAMP = window.FALLING_BUILD ? "?v=" + window.FALLING_BUILD : "";   // so a replaced track is not served from cache
-  const MUSIC_FILES = { normal: "audio/music-normal.mp3" + STAMP, slow: "audio/music-slow.mp3" + STAMP };
+  const audio = { ctx: null, master: null, music: {}, gains: {}, muted: store.get("muted", "0") === "1", started: false, slow: false, urls: {} };
 
   function audioStart() {
     if (audio.started) { if (audio.ctx && audio.ctx.state === "suspended") audio.ctx.resume(); return; }
@@ -213,12 +276,11 @@
     audio.master = audio.ctx.createGain();
     audio.master.gain.value = audio.muted ? 0 : 1;
     audio.master.connect(audio.ctx.destination);
-    for (const k of Object.keys(MUSIC_FILES)) {
-      const el = new Audio(MUSIC_FILES[k]);
+    for (const k of Object.keys(audio.urls)) {
+      if (!audio.urls[k]) continue;   // missing music is fine: sound effects still work
+      const el = new Audio(audio.urls[k]);   // a blob already in memory: no more downloads, always seekable
       el.loop = true;
       el.preload = "auto";
-      el.crossOrigin = "anonymous";
-      el.addEventListener("error", () => {}); // missing music is fine: sound effects still work
       const src = audio.ctx.createMediaElementSource(el);
       const g = audio.ctx.createGain();
       g.gain.value = k === "normal" ? 0.55 : 0;
@@ -231,7 +293,7 @@
   // The two loops differ in length (the slow one is the same piece, stretched), so when
   // crossfading we move the incoming track to the same proportional spot in the piece.
   function musicMode(slow) {
-    if (!audio.ctx || !audio.gains.normal || audio.slow === slow) return;
+    if (!audio.ctx || !audio.gains.normal || !audio.gains.slow || audio.slow === slow) return;
     audio.slow = slow;
     const from = audio.music[slow ? "normal" : "slow"], to = audio.music[slow ? "slow" : "normal"];
     if (from && to && from.duration > 0 && isFinite(from.duration) && isFinite(to.duration)) {
@@ -249,6 +311,9 @@
     if (audio.master) audio.master.gain.value = m ? 0 : 1;
     $("mute").classList.toggle("off", m);
     $("mute").setAttribute("aria-pressed", String(m));
+    $("musicBtn").classList.toggle("off", m);
+    $("musicBtn").setAttribute("aria-pressed", String(!m));
+    $("musicLabel").textContent = m ? "MUSIC: OFF" : "MUSIC: ON";
   }
 
   // One-shot chiptune voices: [startFreq, endFreq, seconds, wave, volume, delay]
@@ -336,6 +401,7 @@
   /* ---------------------------------------------------------------- flow */
   function setMode(m) {
     S.mode = m; S.modeT = 0;
+    frame.dataset.screen = m;   // CSS shows the title-only music button
     setEnum("gameState", m);
   }
   function enterTitle() {
@@ -714,7 +780,7 @@ const hazardGapAt = () => Math.max(CONFIG.hazardGapMin, CONFIG.hazardGapStart + 
   }
 
   window.addEventListener("pointerdown", (e) => {
-    if (e.target.closest && e.target.closest("#mute")) return;
+    if (e.target.closest && e.target.closest("#mute, #musicBtn")) return;
     audioStart();
     if (S.paused) return;
     if (S.mode === "title") { startCountdown(); }
@@ -751,7 +817,7 @@ const hazardGapAt = () => Math.max(CONFIG.hazardGapMin, CONFIG.hazardGapStart + 
     document.addEventListener(n, (e) => e.preventDefault(), { passive: false }));
 
   /* ----------------------------------------------- mute, pause, rotate */
-  $("mute").addEventListener("click", (e) => { e.stopPropagation(); audioStart(); setMuted(!audio.muted); });
+  for (const id of ["mute", "musicBtn"]) $(id).addEventListener("click", (e) => { e.stopPropagation(); audioStart(); setMuted(!audio.muted); });
   setMuted(audio.muted);
 
   const landscape = window.matchMedia("(orientation: landscape) and (pointer: coarse) and (max-height: 520px)");
@@ -761,6 +827,6 @@ const hazardGapAt = () => Math.max(CONFIG.hazardGapMin, CONFIG.hazardGapStart + 
   window.addEventListener("pagehide", () => pause(true));
   window.addEventListener("pageshow", syncRotate);
 
-  startRive();
+  boot();
   syncRotate();
 })();
